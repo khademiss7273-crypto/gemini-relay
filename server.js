@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
     let targetPath = req.url;
     let methodToSend = req.method;
 
-    // هدایت به مدل‌های فوق سریع Flash برای جلوگیری از تایم‌اوت 90 ثانیه
+    // استفاده از نسخه با ظرفیت بالا و بدون محدودیت ترافیک
     targetPath = targetPath.replace(/gemini-[a-zA-Z0-9.-]+/g, 'gemini-2.5-flash-latest');
 
     if (requestBody.length === 0 && (req.url.includes('?{%22contents%22') || req.url.includes('?{"contents"'))) {
