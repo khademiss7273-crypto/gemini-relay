@@ -26,10 +26,10 @@ const server = http.createServer((req, res) => {
     let targetPath = req.url;
     let methodToSend = req.method;
 
-    // تبدیل خودکار مدل منسوخ به مدل فعال و پرسرعت در صورت ارسال از افزونه
-    if (targetPath.includes('gemini-2.5-flash')) {
-      targetPath = targetPath.replace('gemini-2.5-flash', 'gemini-1.5-flash');
-      console.log(`[MODEL REWRITE] Replaced gemini-2.5-flash with gemini-1.5-flash`);
+    // هدایت به مدل معتبر و فعال در v1beta
+    if (targetPath.includes('gemini-2.5-flash') || targetPath.includes('gemini-1.5-flash')) {
+      targetPath = targetPath.replace(/gemini-2\.5-flash|gemini-1\.5-flash/g, 'gemini-2.0-flash');
+      console.log(`[MODEL REWRITE] Forwarding to gemini-2.0-flash`);
     }
 
     // اصلاح ارسال بدنه در صورت تبدیل شدن به کوئری در وردپرس
