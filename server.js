@@ -5,6 +5,7 @@ const TARGET_HOST = 'generativelanguage.googleapis.com';
 const PORT = process.env.PORT || 10000;
 
 const server = http.createServer((req, res) => {
+  // هدرهای CORS برای ارتباط بدون مانع
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', '*');
@@ -17,6 +18,7 @@ const server = http.createServer((req, res) => {
 
   const startTime = Date.now();
   const bodyChunks = [];
+
   req.on('data', chunk => {
     bodyChunks.push(chunk);
   });
@@ -26,19 +28,17 @@ const server = http.createServer((req, res) => {
     let targetPath = req.url;
     let methodToSend = req.method;
 
-    // هدایت به مدل معتبر و فعال در v1beta
-    if (targetPath.includes('gemini-2.5-flash') || targetPath.includes('gemini-1.5-flash')) {
-      targetPath = targetPath.replace(/gemini-2\.5-flash|gemini-1\.5-flash/g, 'gemini-2.0-flash');
-      console.log(`[MODEL REWRITE] Forwarding to gemini-2.0-flash`);
-    }
+    // تبدیل خودکار هرگونه نام مدل قدیمی/منسوخ به مدل رسمی اعلام‌شده توسط گوگل
+    targetPath = targetPath.replace(/gemini-[a-zA-Z0-9.-]+/g, 'gemini-3.8-flash');
 
-    // اصلاح ارسال بدنه در صورت تبدیل شدن به کوئری در وردپرس
+    // تصحیح درخواست‌هایی که وردپرس بدنه جیسون را در کوئری آدرس می‌چسباند
     if (requestBody.length === 0 && (req.url.includes('?{%22contents%22') || req.url.includes('?{"contents"'))) {
       const parts = req.url.split('?');
-      targetPath = parts[0];
+      targetPath = parts[0].replace(/gemini-[a-zA-Z0-9.-]+/g, 'gemini-3.8-flash');
       const rawQuery = decodeURIComponent(parts.slice(1).join('?'));
       requestBody = Buffer.from(rawQuery, 'utf8');
       methodToSend = 'POST';
+      console.log('[CORRECTION] Extracted JSON payload from query string to POST body.');
     }
 
     if (targetPath.includes(':generateContent') && methodToSend === 'GET') {
@@ -49,7 +49,6 @@ const server = http.createServer((req, res) => {
     headers['host'] = TARGET_HOST;
     headers['content-type'] = 'application/json';
 
-    // حذف هدرهای اتصال هاست برای جلوگیری از بسته‌شدن پیش‌رس سوکت
     delete headers['connection'];
     delete headers['keep-alive'];
 
@@ -59,7 +58,7 @@ const server = http.createServer((req, res) => {
       delete headers['content-length'];
     }
 
-    console.log(`[OUTGOING] ${methodToSend} to ${targetPath.slice(0, 60)}...`);
+    console.log(`[FORWARDING] ${methodToSend} -> ${targetPath.slice(0, 70)}...`);
 
     const options = {
       hostname: TARGET_HOST,
@@ -70,7 +69,7 @@ const server = http.createServer((req, res) => {
     };
 
     const proxyReq = https.request(options, (proxyRes) => {
-      console.log(`[RESPONSE] Status: ${proxyRes.statusCode} after ${Date.now() - startTime}ms`);
+      console.log(`[RESPONSE] Status: ${proxyRes.statusCode} (${Date.now() - startTime}ms)`);
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       proxyRes.pipe(res);
     });
