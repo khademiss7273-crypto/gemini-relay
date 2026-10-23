@@ -3,9 +3,7 @@ const https = require('https');
 
 const TARGET_HOST = 'generativelanguage.googleapis.com';
 const PORT = process.env.PORT || 10000;
-
-// مدل پایدار و رسمی تأییدشده در لیست حساب کاربری شما
-const ACTIVE_MODEL = 'gemini-2.5-flash';
+const ACTIVE_MODEL = 'gemini-3.8-flash';
 
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,10 +26,9 @@ const server = http.createServer((req, res) => {
     let targetPath = req.url;
     let methodToSend = req.method;
 
-    // هدایت دقیق نام مدل
+    // هدایت تمام درخواست‌ها به مدل معتبر اعلام‌شده توسط گوگل
     targetPath = targetPath.replace(/gemini-[a-zA-Z0-9.-]+/g, ACTIVE_MODEL);
 
-    // رفع مشکل قرارگیری بدنه جیسون در آدرس کوئری (در صورت رخ دادن در وردپرس)
     if (requestBody.length === 0 && (req.url.includes('?{%22contents%22') || req.url.includes('?{"contents"'))) {
       const parts = req.url.split('?');
       targetPath = parts[0].replace(/gemini-[a-zA-Z0-9.-]+/g, ACTIVE_MODEL);
