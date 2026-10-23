@@ -15,6 +15,21 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // اگر آدرس /list-models باز شد، لیست مدل‌های فعال گوگل را برگردان
+  if (req.url.startsWith('/list-models')) {
+    const apiKey = req.url.split('key=')[1] || '';
+    const listPath = `/v1beta/models?key=${apiKey}`;
+    
+    https.get({ hostname: TARGET_HOST, path: listPath }, (googleRes) => {
+      res.writeHead(googleRes.statusCode, { 'Content-Type': 'application/json' });
+      googleRes.pipe(res);
+    }).on('error', (err) => {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    });
+    return;
+  }
+
   const startTime = Date.now();
   const bodyChunks = [];
 
@@ -27,8 +42,8 @@ const server = http.createServer((req, res) => {
     let targetPath = req.url;
     let methodToSend = req.method;
 
-    // استفاده از نسخه با ظرفیت بالا و بدون محدودیت ترافیک
-    targetPath = targetPath.replace(/gemini-[a-zA-Z0-9.-]+/g, 'gemini-2.5-flash-latest');
+    // تنظیم روی مدل رسمی اعلام شده
+    targetPath = targetPath.replace(/gemini-[a-zA-Z0-9.-]+/g, 'gemini-3.8-flash');
 
     if (requestBody.length === 0 && (req.url.includes('?{%22contents%22') || req.url.includes('?{"contents"'))) {
       const parts = req.url.split('?');
@@ -55,8 +70,6 @@ const server = http.createServer((req, res) => {
       delete headers['content-length'];
     }
 
-    console.log(`[FORWARDING] ${methodToSend} -> ${targetPath.slice(0, 65)}...`);
-
     const options = {
       hostname: TARGET_HOST,
       port: 443,
@@ -72,7 +85,6 @@ const server = http.createServer((req, res) => {
     });
 
     proxyReq.on('error', (err) => {
-      console.error('[PROXY ERROR]', err);
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Relay failed', details: err.message }));
     });
