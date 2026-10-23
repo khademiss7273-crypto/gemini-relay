@@ -3,7 +3,7 @@ const https = require('https');
 
 const TARGET_HOST = 'generativelanguage.googleapis.com';
 const PORT = process.env.PORT || 10000;
-const ACTIVE_MODEL = 'gemini-3.8-flash';
+const ACTIVE_MODEL = 'gemini-3.5-flash';
 
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
