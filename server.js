@@ -15,23 +15,41 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // جمع‌آوری کامل دیتای ورودی از وردپرس
   const bodyChunks = [];
   req.on('data', chunk => {
     bodyChunks.push(chunk);
   });
 
   req.on('end', () => {
-    const requestBody = Buffer.concat(bodyChunks);
+    let requestBody = Buffer.concat(bodyChunks);
+
+    // بررسی اینکه آیا بدنه در URL به عنوان کوئری ارسال شده است یا خیر
+    let targetPath = req.url;
+    let methodToSend = req.method;
+
+    console.log(`[INCOMING] Method: ${req.method} | URL: ${req.url.slice(0, 80)}... | Body Length: ${requestBody.length}`);
+
+    // اگر بدنه خالی بود اما در URL اطلاعات جیسون چسبیده بود (خطای رایج در برخی کلاینت‌های وردپرس)
+    if (requestBody.length === 0 && req.url.includes('?{%22contents%22') || req.url.includes('?{"contents"')) {
+      const parts = req.url.split('?');
+      targetPath = parts[0];
+      const rawQuery = decodeURIComponent(parts.slice(1).join('?'));
+      requestBody = Buffer.from(rawQuery, 'utf8');
+      methodToSend = 'POST';
+      console.log(`[CORRECTION] Extracted JSON payload from query string to POST body.`);
+    }
+
+    // اگر درخواست به متد POST نیاز دارد ولی GET ارسال شده
+    if (targetPath.includes(':generateContent') && methodToSend === 'GET') {
+      methodToSend = 'POST';
+    }
 
     const headers = { ...req.headers };
     headers['host'] = TARGET_HOST;
+    headers['content-type'] = 'application/json';
 
     if (requestBody.length > 0) {
       headers['content-length'] = Buffer.byteLength(requestBody);
-      if (!headers['content-type']) {
-        headers['content-type'] = 'application/json';
-      }
     } else {
       delete headers['content-length'];
     }
@@ -39,8 +57,8 @@ const server = http.createServer((req, res) => {
     const options = {
       hostname: TARGET_HOST,
       port: 443,
-      path: req.url,
-      method: req.method,
+      path: targetPath,
+      method: methodToSend,
       headers: headers
     };
 
@@ -50,9 +68,9 @@ const server = http.createServer((req, res) => {
     });
 
     proxyReq.on('error', (err) => {
-      console.error('Relay error:', err);
+      console.error('[PROXY ERROR]', err);
       res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Relay connection failed', details: err.message }));
+      res.end(JSON.stringify({ error: 'Relay failed', details: err.message }));
     });
 
     if (requestBody.length > 0) {
