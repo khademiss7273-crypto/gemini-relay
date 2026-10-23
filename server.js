@@ -26,7 +26,6 @@ const server = http.createServer((req, res) => {
     let targetPath = req.url;
     let methodToSend = req.method;
 
-    // هدایت تمام درخواست‌ها به مدل معتبر اعلام‌شده توسط گوگل
     targetPath = targetPath.replace(/gemini-[a-zA-Z0-9.-]+/g, ACTIVE_MODEL);
 
     if (requestBody.length === 0 && (req.url.includes('?{%22contents%22') || req.url.includes('?{"contents"'))) {
@@ -53,8 +52,6 @@ const server = http.createServer((req, res) => {
       delete headers['content-length'];
     }
 
-    console.log(`[FORWARDING] ${methodToSend} -> ${targetPath.slice(0, 70)}...`);
-
     const options = {
       hostname: TARGET_HOST,
       port: 443,
@@ -70,9 +67,8 @@ const server = http.createServer((req, res) => {
     });
 
     proxyReq.on('error', (err) => {
-      console.error('[PROXY ERROR]', err);
       res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Relay failed', details: err.message }));
+      res.end(JSON.stringify({ error: err.message }));
     });
 
     if (requestBody.length > 0) {
